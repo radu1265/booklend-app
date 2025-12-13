@@ -1,7 +1,6 @@
 FROM maven:3.9.3-eclipse-temurin-17 AS build
 WORKDIR /workspace
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
+COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -DskipTests dependency:go-offline
 
 COPY src ./src

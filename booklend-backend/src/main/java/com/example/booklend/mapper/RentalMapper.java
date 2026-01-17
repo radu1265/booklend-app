@@ -1,4 +1,3 @@
-// java
 package com.example.booklend.mapper;
 
 import com.example.booklend.dto.RentalDto;

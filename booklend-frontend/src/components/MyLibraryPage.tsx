@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Navbar } from "./Navbar";
-import { BookOpen, Clock, Heart, Trash2, Download, BookMarked } from "lucide-react";
+import { BookOpen, Heart, Trash2, Download, Loader2 } from "lucide-react";
+import { fetchBooks, fetchRentals, getBookImageUrl, Book, Rental } from "../api";
 
 interface MyLibraryPageProps {
     onNavigate: (page: string) => void;
@@ -8,53 +10,99 @@ interface MyLibraryPageProps {
 }
 
 export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
-    const myBooks = [
-        {
-            id: 1,
-            title: "The Midnight Garden",
-            author: "Sarah Johnson",
-            image: "https://images.unsplash.com/photo-1758796629109-4f38e9374f45?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib29rJTIwY292ZXIlMjBmaWN0aW9ufGVufDF8fHx8MTc2NDMzODk4OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-            progress: 75,
-            status: "Reading",
-        },
-        {
-            id: 2,
-            title: "Mystery at Dawn",
-            author: "Michael Chen",
-            image: "https://images.unsplash.com/photo-1604435062356-a880b007922c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib29rJTIwY292ZXIlMjBteXN0ZXJ5fGVufDF8fHx8MTc2NDMyNTkxMnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-            progress: 100,
-            status: "Completed",
-        },
-        {
-            id: 3,
-            title: "Love in Paris",
-            author: "Emma Williams",
-            image: "https://images.unsplash.com/photo-1711185901354-73cb6b666c32?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib29rJTIwY292ZXIlMjByb21hbmNlfGVufDF8fHx8MTc2NDMyMzQ5MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-            progress: 45,
-            status: "Reading",
-        },
-        {
-            id: 4,
-            title: "Realm of Dragons",
-            author: "Lisa Anderson",
-            image: "https://images.unsplash.com/photo-1711185892188-13f35959d3ca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib29rJTIwY292ZXIlMjBmYW50YXN5fGVufDF8fHx8MTc2NDM5NDk3MHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-            progress: 0,
-            status: "Want to Read",
-        },
-    ];
+    const [activeTab, setActiveTab] = useState("reading");
+    const [isLoading, setIsLoading] = useState(true);
+    const [libraryBooks, setLibraryBooks] = useState<any[]>([]);
+    const [allBooks, setAllBooks] = useState<Book[]>([]);
+    const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => {
+        const saved = localStorage.getItem('favorites');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
 
+    useEffect(() => {
+        async function loadLibraryBooks() {
+            setIsLoading(true);
+            const [booksData, rentalsData] = await Promise.all([
+                fetchBooks(),
+                fetchRentals()
+            ]);
+            
+            setAllBooks(booksData);
+            
+            // Map rentals to library books with book details
+            const libraryItems = rentalsData.map(rental => {
+                const book = booksData.find(b => b.id === rental.bookId);
+                return {
+                    ...book,
+                    ...rental,
+                    progress: rental.returned ? 100 : 50,
+                    status: rental.returned ? "Completed" : "Reading"
+                };
+            });
+            
+            setLibraryBooks(libraryItems);
+            setIsLoading(false);
+        }
+        loadLibraryBooks();
+    }, []);
+
+    // Listen for favorite changes from localStorage
+    useEffect(() => {
+        const handleFavoritesChange = () => {
+            const saved = localStorage.getItem('favorites');
+            setFavoriteIds(saved ? new Set(JSON.parse(saved)) : new Set());
+        };
+
+        window.addEventListener('favoritesChanged', handleFavoritesChange);
+        // Also check periodically in case favorites changed in another tab
+        const interval = setInterval(handleFavoritesChange, 1000);
+        return () => {
+            window.removeEventListener('favoritesChanged', handleFavoritesChange);
+            clearInterval(interval);
+        };
+    }, []);
+
+    const handleRemoveBook = (bookId: number, bookTitle: string) => {
+        if (confirm(`Remove "${bookTitle}" from your library?`)) {
+            setLibraryBooks(libraryBooks.filter(book => book.id !== bookId));
+        }
+    };
+
+    const handleUpdateProgress = (bookId: number, newStatus: string, newProgress: number) => {
+        setLibraryBooks(libraryBooks.map(book => 
+            book.id === bookId 
+                ? { ...book, status: newStatus, progress: newProgress }
+                : book
+        ));
+    };
+
+    // Filter books based on active tab
+    const filteredBooks = (() => {
+        if (activeTab === "reading") return libraryBooks.filter(book => book.status === "Reading");
+        if (activeTab === "completed") return libraryBooks.filter(book => book.status === "Completed");
+        if (activeTab === "favorites") {
+            // Show books that are hearted, combine rentals and all books
+            return allBooks
+                .filter(book => favoriteIds.has(book.id))
+                .map(book => ({
+                    ...book,
+                    isFavorite: true
+                }));
+        }
+        return libraryBooks;
+    })();
+
+    // Dynamic stats based on library
     const readingStats = [
-        { label: "Books Read", value: "12", icon: BookOpen, color: "bg-blue-100 text-blue-600" },
-        { label: "Reading Time", value: "45h", icon: Clock, color: "bg-green-100 text-green-600" },
-        { label: "Favorites", value: "8", icon: Heart, color: "bg-pink-100 text-pink-600" },
-        { label: "In Progress", value: "3", icon: BookMarked, color: "bg-purple-100 text-purple-600" },
+        { label: "Books Read", value: libraryBooks.filter(b => b.status === "Completed").length, icon: BookOpen, color: "bg-blue-100 text-blue-600" },
+        { label: "Currently Reading", value: libraryBooks.filter(b => b.status === "Reading").length, icon: Heart, color: "bg-pink-100 text-pink-600" },
+        { label: "Total Books", value: libraryBooks.length + favoriteIds.size, icon: Download, color: "bg-green-100 text-green-600" },
     ];
 
     return (
         <div className="min-h-screen bg-white">
             <Navbar currentPage="library" onNavigate={onNavigate} onLogout={onLogout} />
 
-            {/* Page Header */}
             <div className="bg-gradient-to-br from-blue-50 to-white py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h1 className="text-gray-900 mb-2">My Library</h1>
@@ -62,7 +110,6 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                 </div>
             </div>
 
-            {/* Stats Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     {readingStats.map((stat, index) => {
@@ -81,32 +128,60 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                     })}
                 </div>
 
-                {/* Tabs */}
                 <div className="flex gap-4 mb-8 border-b border-gray-200">
-                    <button className="px-4 py-3 border-b-2 border-blue-600 text-blue-600">Currently Reading</button>
-                    <button className="px-4 py-3 text-gray-600 hover:text-gray-900">Completed</button>
-                    <button className="px-4 py-3 text-gray-600 hover:text-gray-900">Want to Read</button>
-                    <button className="px-4 py-3 text-gray-600 hover:text-gray-900">Favorites</button>
+                    <button 
+                        onClick={() => setActiveTab("reading")}
+                        className={`px-4 py-3 border-b-2 ${activeTab === "reading" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-600 hover:text-gray-900"}`}
+                    >
+                        Currently Reading
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab("completed")}
+                        className={`px-4 py-3 border-b-2 ${activeTab === "completed" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-600 hover:text-gray-900"}`}
+                    >
+                        Completed
+                    </button>
+                    
+                    <button 
+                        onClick={() => setActiveTab("favorites")}
+                        className={`px-4 py-3 border-b-2 ${activeTab === "favorites" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-600 hover:text-gray-900"}`}
+                    >
+                        Favorites
+                    </button>
                 </div>
 
-                {/* Books List */}
-                <div className="space-y-4">
-                    {myBooks.map((book) => (
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        <span className="ml-2 text-gray-600">Loading your library...</span>
+                    </div>
+                ) : filteredBooks.length === 0 ? (
+                    <div className="text-center py-12">
+                        <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">No books in this category yet.</p>
+                        <button 
+                            onClick={() => onNavigate("browse")}
+                            className="mt-4 text-blue-600 hover:text-blue-700"
+                        >
+                            Browse books to add to your library
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {filteredBooks.map((book) => (
                         <div
                             key={book.id}
                             className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
                         >
                             <div className="flex flex-col sm:flex-row gap-6">
-                                {/* Book Cover */}
                                 <div className="w-24 h-32 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
                                     <ImageWithFallback
-                                        src={book.image}
+                                        src={getBookImageUrl(book)}
                                         alt={book.title}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
 
-                                {/* Book Info */}
                                 <div className="flex-1">
                                     <div className="flex items-start justify-between mb-2">
                                         <div>
@@ -126,7 +201,6 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                                         </span>
                                     </div>
 
-                                    {/* Progress Bar */}
                                     {book.progress > 0 && (
                                         <div className="mb-4">
                                             <div className="flex items-center justify-between mb-2">
@@ -142,56 +216,75 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                                         </div>
                                     )}
 
-                                    {/* Actions */}
                                     <div className="flex flex-wrap gap-3">
                                         {book.status === "Reading" && (
-                                            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                            <button 
+                                                onClick={() => handleUpdateProgress(book.id, "Reading", Math.min(book.progress + 10, 100))}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
                                                 Continue Reading
                                             </button>
                                         )}
                                         {book.status === "Completed" && (
-                                            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                            <button 
+                                                onClick={() => handleUpdateProgress(book.id, "Reading", 0)}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                            >
                                                 Read Again
                                             </button>
                                         )}
                                         {book.status === "Want to Read" && (
-                                            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                            <button 
+                                                onClick={() => handleUpdateProgress(book.id, "Reading", 0)}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
                                                 Start Reading
                                             </button>
                                         )}
-                                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = book.image;
+                                                link.download = `${book.title}.jpg`;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                            }}
+                                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                        >
                                             <Download className="w-4 h-4" />
                                             Download
                                         </button>
-                                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                            <Heart className="w-4 h-4" />
-                                            Favorite
+                                        <button 
+                                            onClick={() => {
+                                                const newFavorites = new Set(favoriteIds);
+                                                if (newFavorites.has(book.id)) {
+                                                    newFavorites.delete(book.id);
+                                                } else {
+                                                    newFavorites.add(book.id);
+                                                }
+                                                setFavoriteIds(newFavorites);
+                                                localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)));
+                                            }}
+                                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                        >
+                                            <Heart className={`w-4 h-4 ${favoriteIds.has(book.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                                            {favoriteIds.has(book.id) ? 'Unfavorite' : 'Favorite'}
                                         </button>
-                                        <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2">
-                                            <Trash2 className="w-4 h-4" />
-                                            Remove
-                                        </button>
+                                        {!book.isFavorite && (
+                                            <button 
+                                                onClick={() => handleRemoveBook(book.id, book.title)}
+                                                className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Remove
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ))}
-                </div>
-
-                {/* Empty State (if no books) */}
-                {myBooks.length === 0 && (
-                    <div className="text-center py-16">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <BookOpen className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-gray-900 mb-2">Your library is empty</h3>
-                        <p className="text-gray-600 mb-6">Start building your collection by browsing our books</p>
-                        <button
-                            onClick={() => onNavigate("browse")}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            Browse Books
-                        </button>
                     </div>
                 )}
             </div>

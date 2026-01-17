@@ -1,4 +1,3 @@
-// Simple router using browser History API
 type RouteChangeCallback = (path: string) => void;
 
 let listeners: RouteChangeCallback[] = [];
@@ -23,7 +22,6 @@ function notifyListeners(path: string) {
     listeners.forEach((callback) => callback(path));
 }
 
-// Handle browser back/forward buttons
 window.addEventListener("popstate", () => {
     notifyListeners(getCurrentPath());
 });

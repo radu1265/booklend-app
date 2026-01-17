@@ -12,6 +12,11 @@ interface HomePageProps {
 export function HomePage({ onNavigate, onLogout }: HomePageProps) {
     const [books, setBooks] = useState<Book[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [favorites, setFavorites] = useState<Set<number>>(() => {
+        const saved = localStorage.getItem('favorites');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
 
     useEffect(() => {
         async function loadBooks() {
@@ -23,16 +28,82 @@ export function HomePage({ onNavigate, onLogout }: HomePageProps) {
         loadBooks();
     }, []);
 
-    const categories = [
-        { name: "Fiction", icon: BookOpen, color: "bg-blue-100 text-blue-600", count: `${books.filter(b => b.genre === "Fiction").length} books` },
-        { name: "Fantasy", icon: Sparkles, color: "bg-indigo-100 text-indigo-600", count: `${books.filter(b => b.genre === "Fantasy").length} books` },
-        { name: "Romance", icon: Heart, color: "bg-pink-100 text-pink-600", count: `${books.filter(b => b.genre === "Romance").length} books` },
-        { name: "Dystopian", icon: Compass, color: "bg-purple-100 text-purple-600", count: `${books.filter(b => b.genre === "Dystopian").length} books` },
-        { name: "Biography", icon: User, color: "bg-yellow-100 text-yellow-600", count: `${books.filter(b => b.genre === "Biography").length} books` },
-        { name: "Self-Help", icon: TrendingUp, color: "bg-orange-100 text-orange-600", count: `${books.filter(b => b.genre === "Self-Help").length} books` },
-        { name: "History", icon: BookMarked, color: "bg-red-100 text-red-600", count: `${books.filter(b => b.genre === "History").length} books` },
-        { name: "Science", icon: Sparkles, color: "bg-green-100 text-green-600", count: `${books.filter(b => b.genre === "Science").length} books` },
-    ];
+    useEffect(() => {
+        const handleFavoritesChange = () => {
+            const saved = localStorage.getItem('favorites');
+            setFavorites(saved ? new Set(JSON.parse(saved)) : new Set());
+        };
+
+        window.addEventListener('favoritesChanged', handleFavoritesChange);
+        return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
+    }, []);
+
+    const handleSearch = () => {
+        if (searchQuery.trim()) {
+            window.location.href = `/browse?search=${encodeURIComponent(searchQuery)}`;
+        } else {
+            window.location.href = '/browse';
+        }
+    };
+
+    const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
+    const toggleFavorite = (bookId: number) => {
+        const newFavorites = new Set(favorites);
+        if (newFavorites.has(bookId)) {
+            newFavorites.delete(bookId);
+        } else {
+            newFavorites.add(bookId);
+        }
+        // Update state and localStorage immediately
+        setFavorites(newFavorites);
+        const favArray = Array.from(newFavorites);
+        localStorage.setItem('favorites', JSON.stringify(favArray));
+        // Dispatch event for other components to sync
+        window.dispatchEvent(new Event('favoritesChanged'));
+    };
+
+    // Create dynamic categories from unique genres in the database
+    const categories = (() => {
+        const uniqueGenres = [...new Set(books.map(b => b.genre))].slice(0, 8);
+        
+        const getIconForGenre = (genre: string): any => {
+            const lowerGenre = genre.toLowerCase();
+            if (lowerGenre.includes('fiction') && !lowerGenre.includes('science')) return BookOpen;
+            if (lowerGenre.includes('fantasy') || lowerGenre.includes('magic')) return Sparkles;
+            if (lowerGenre.includes('romance') || lowerGenre.includes('love')) return Heart;
+            if (lowerGenre.includes('dystopian') || lowerGenre.includes('apocalyptic')) return Compass;
+            if (lowerGenre.includes('biography') || lowerGenre.includes('memoir')) return User;
+            if (lowerGenre.includes('self-help') || lowerGenre.includes('personal')) return TrendingUp;
+            if (lowerGenre.includes('history') || lowerGenre.includes('historical')) return BookMarked;
+            if (lowerGenre.includes('science') || lowerGenre.includes('technology')) return Sparkles;
+            return BookOpen;
+        };
+
+        const getColorForGenre = (genre: string): string => {
+            const lowerGenre = genre.toLowerCase();
+            if (lowerGenre.includes('fiction') && !lowerGenre.includes('science')) return "bg-blue-100 text-blue-600";
+            if (lowerGenre.includes('fantasy') || lowerGenre.includes('magic')) return "bg-indigo-100 text-indigo-600";
+            if (lowerGenre.includes('romance') || lowerGenre.includes('love')) return "bg-pink-100 text-pink-600";
+            if (lowerGenre.includes('dystopian') || lowerGenre.includes('apocalyptic')) return "bg-purple-100 text-purple-600";
+            if (lowerGenre.includes('biography') || lowerGenre.includes('memoir')) return "bg-yellow-100 text-yellow-600";
+            if (lowerGenre.includes('self-help') || lowerGenre.includes('personal')) return "bg-orange-100 text-orange-600";
+            if (lowerGenre.includes('history') || lowerGenre.includes('historical')) return "bg-red-100 text-red-600";
+            if (lowerGenre.includes('science') || lowerGenre.includes('technology')) return "bg-green-100 text-green-600";
+            return "bg-blue-100 text-blue-600";
+        };
+
+        return uniqueGenres.map(genre => ({
+            name: genre,
+            icon: getIconForGenre(genre),
+            color: getColorForGenre(genre),
+            count: `${books.filter(b => b.genre === genre).length} books`
+        }));
+    })();
 
     // Get featured books (first 4)
     const featuredBooks = books.slice(0, 4);
@@ -59,8 +130,14 @@ export function HomePage({ onNavigate, onLogout }: HomePageProps) {
                                     type="text"
                                     placeholder="Search for books, authors, or ISBN..."
                                     className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyPress={handleSearchKeyPress}
                                 />
-                                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                <button 
+                                    onClick={handleSearch}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                >
                                     Search
                                 </button>
                             </div>
@@ -73,12 +150,12 @@ export function HomePage({ onNavigate, onLogout }: HomePageProps) {
                                 <div className="text-gray-600">Books</div>
                             </div>
                             <div>
-                                <div className="text-blue-600 mb-1">50,000+</div>
+                                <div className="text-blue-600 mb-1">{Math.ceil(books.reduce((sum, b) => sum + b.stockCount, 0) / 10)}+</div>
                                 <div className="text-gray-600">Readers</div>
                             </div>
                             <div>
-                                <div className="text-blue-600 mb-1">100+</div>
-                                <div className="text-gray-600">Publishers</div>
+                                <div className="text-blue-600 mb-1">{[...new Set(books.map(b => b.author))].length}+</div>
+                                <div className="text-gray-600">Authors</div>
                             </div>
                         </div>
                     </div>
@@ -124,8 +201,15 @@ export function HomePage({ onNavigate, onLogout }: HomePageProps) {
                                             alt={book.title}
                                             className="w-full h-full object-cover"
                                         />
-                                        <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm">
-                                            <Heart className="w-4 h-4 text-gray-600" />
+                                        <button 
+                                            onClick={() => toggleFavorite(book.id)}
+                                            className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm"
+                                        >
+                                            <Heart 
+                                                className="w-4 h-4"
+                                                fill={favorites.has(book.id) ? "#ef4444" : "none"}
+                                                color={favorites.has(book.id) ? "#ef4444" : "#4b5563"}
+                                            />
                                         </button>
                                     </div>
                                     <div className="p-4">
@@ -141,6 +225,7 @@ export function HomePage({ onNavigate, onLogout }: HomePageProps) {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <button 
+                                                onClick={() => onNavigate("browse")}
                                                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 disabled={book.stockCount === 0}
                                             >

@@ -15,6 +15,10 @@ export function BrowseBooksPage({ onNavigate, onLogout }: BrowseBooksPageProps) 
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [sortBy, setSortBy] = useState("title");
     const [searchQuery, setSearchQuery] = useState("");
+    const [favorites, setFavorites] = useState<Set<number>>(() => {
+        const saved = localStorage.getItem('favorites');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
 
     useEffect(() => {
         async function loadBooks() {
@@ -25,6 +29,57 @@ export function BrowseBooksPage({ onNavigate, onLogout }: BrowseBooksPageProps) 
         }
         loadBooks();
     }, []);
+
+    useEffect(() => {
+        const handleFavoritesChange = () => {
+            const saved = localStorage.getItem('favorites');
+            setFavorites(saved ? new Set(JSON.parse(saved)) : new Set());
+        };
+
+        window.addEventListener('favoritesChanged', handleFavoritesChange);
+        return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
+    }, []);
+
+    // Read search query and category from URL parameters
+    useEffect(() => {
+        const updateFromUrl = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchParam = urlParams.get('search');
+            const categoryParam = urlParams.get('category');
+            
+            if (searchParam) {
+                setSearchQuery(decodeURIComponent(searchParam));
+            }
+            
+            if (categoryParam) {
+                setSelectedCategory(decodeURIComponent(categoryParam).toLowerCase());
+            }
+        };
+
+        updateFromUrl();
+
+        // Listen for popstate events (back/forward navigation)
+        window.addEventListener('popstate', updateFromUrl);
+        
+        return () => {
+            window.removeEventListener('popstate', updateFromUrl);
+        };
+    }, []);
+
+    const toggleFavorite = (bookId: number) => {
+        const newFavorites = new Set(favorites);
+        if (newFavorites.has(bookId)) {
+            newFavorites.delete(bookId);
+        } else {
+            newFavorites.add(bookId);
+        }
+        // Update state and localStorage immediately
+        setFavorites(newFavorites);
+        const favArray = Array.from(newFavorites);
+        localStorage.setItem('favorites', JSON.stringify(favArray));
+        // Dispatch event for other components to sync
+        window.dispatchEvent(new Event('favoritesChanged'));
+    };
 
     // Get unique categories from books
     const categories = useMemo(() => {
@@ -195,8 +250,15 @@ export function BrowseBooksPage({ onNavigate, onLogout }: BrowseBooksPageProps) 
                                                 alt={book.title}
                                                 className="w-full h-full object-cover"
                                             />
-                                            <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm">
-                                                <Heart className="w-4 h-4 text-gray-600" />
+                                            <button 
+                                                onClick={() => toggleFavorite(book.id)}
+                                                className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm"
+                                            >
+                                                <Heart 
+                                                    className="w-4 h-4"
+                                                    fill={favorites.has(book.id) ? "#ef4444" : "none"}
+                                                    color={favorites.has(book.id) ? "#ef4444" : "#4b5563"}
+                                                />
                                             </button>
                                         </div>
                                         <div className="p-4">

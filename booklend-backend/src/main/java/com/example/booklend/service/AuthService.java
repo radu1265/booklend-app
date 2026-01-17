@@ -1,4 +1,3 @@
-// java
 package com.example.booklend.service;
 
 import com.example.booklend.dto.LoginRequest;
@@ -14,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -55,5 +55,23 @@ public class AuthService {
         var userDetails = userDetailsService.loadUserByUsername(req.getEmail());
         String token = jwtUtil.generateToken(userDetails);
         return ResponseEntity.ok(Map.of("token", token));
+    }
+
+    public ResponseEntity<?> getCurrentUser(UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        var optUser = userRepository.findByEmail(userDetails.getUsername());
+        if (optUser.isEmpty()) {
+            return ResponseEntity.status(404).body("User not found");
+        }
+        var u = optUser.get();
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("id", u.getId());
+        payload.put("email", u.getEmail());
+        payload.put("firstName", u.getFirstName());
+        payload.put("lastName", u.getLastName());
+        payload.put("role", u.getRole().name());
+        return ResponseEntity.ok(payload);
     }
 }

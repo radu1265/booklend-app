@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { Navbar } from "./Navbar";
+import { fetchBooks } from "../api";
 import {
     BookOpen,
     Heart,
@@ -24,134 +26,86 @@ interface CategoriesPageProps {
 }
 
 export function CategoriesPage({ onNavigate, onLogout }: CategoriesPageProps) {
-    const categories = [
-        {
-            name: "Fiction",
-            icon: BookOpen,
-            color: "bg-blue-100 text-blue-600 border-blue-200",
-            count: "2,340 books",
-            description: "Explore imaginary worlds and compelling stories",
-        },
-        {
-            name: "Mystery & Thriller",
-            icon: Compass,
-            color: "bg-purple-100 text-purple-600 border-purple-200",
-            count: "1,230 books",
-            description: "Suspenseful tales that keep you guessing",
-        },
-        {
-            name: "Romance",
-            icon: Heart,
-            color: "bg-pink-100 text-pink-600 border-pink-200",
-            count: "1,890 books",
-            description: "Love stories from sweet to steamy",
-        },
-        {
-            name: "Science & Technology",
-            icon: Sparkles,
-            color: "bg-green-100 text-green-600 border-green-200",
-            count: "890 books",
-            description: "Discover the wonders of science",
-        },
-        {
-            name: "Biography & Memoir",
-            icon: User,
-            color: "bg-yellow-100 text-yellow-600 border-yellow-200",
-            count: "670 books",
-            description: "Real life stories of remarkable people",
-        },
-        {
-            name: "Self-Help & Personal Growth",
-            icon: TrendingUp,
-            color: "bg-orange-100 text-orange-600 border-orange-200",
-            count: "1,120 books",
-            description: "Transform your life and mindset",
-        },
-        {
-            name: "History",
-            icon: BookMarked,
-            color: "bg-red-100 text-red-600 border-red-200",
-            count: "780 books",
-            description: "Journey through time and civilizations",
-        },
-        {
-            name: "Fantasy",
-            icon: Sparkles,
-            color: "bg-indigo-100 text-indigo-600 border-indigo-200",
-            count: "1,560 books",
-            description: "Magic, dragons, and epic adventures",
-        },
-        {
-            name: "Philosophy",
-            icon: Lightbulb,
-            color: "bg-cyan-100 text-cyan-600 border-cyan-200",
-            count: "450 books",
-            description: "Explore life's big questions",
-        },
-        {
-            name: "Business & Economics",
-            icon: Briefcase,
-            color: "bg-teal-100 text-teal-600 border-teal-200",
-            count: "920 books",
-            description: "Master the art of business",
-        },
-        {
-            name: "Education & Reference",
-            icon: GraduationCap,
-            color: "bg-lime-100 text-lime-600 border-lime-200",
-            count: "680 books",
-            description: "Learn and expand your knowledge",
-        },
-        {
-            name: "Arts & Music",
-            icon: Music,
-            color: "bg-fuchsia-100 text-fuchsia-600 border-fuchsia-200",
-            count: "340 books",
-            description: "Creativity and artistic expression",
-        },
-        {
-            name: "Travel & Adventure",
-            icon: Plane,
-            color: "bg-sky-100 text-sky-600 border-sky-200",
-            count: "520 books",
-            description: "Explore the world from your couch",
-        },
-        {
-            name: "Cooking & Food",
-            icon: Utensils,
-            color: "bg-amber-100 text-amber-600 border-amber-200",
-            count: "410 books",
-            description: "Culinary adventures and recipes",
-        },
-        {
-            name: "Art & Design",
-            icon: Palette,
-            color: "bg-rose-100 text-rose-600 border-rose-200",
-            count: "290 books",
-            description: "Visual arts and creative design",
-        },
-        {
-            name: "Law & Politics",
-            icon: Scale,
-            color: "bg-slate-100 text-slate-600 border-slate-200",
-            count: "360 books",
-            description: "Understanding society and governance",
-        },
-        {
-            name: "Health & Wellness",
-            icon: Activity,
-            color: "bg-emerald-100 text-emerald-600 border-emerald-200",
-            count: "740 books",
-            description: "Physical and mental well-being",
-        },
-        {
-            name: "Children's Books",
-            icon: BookOpen,
-            color: "bg-violet-100 text-violet-600 border-violet-200",
-            count: "1,230 books",
-            description: "Stories for young readers",
-        },
-    ];
+    const [books, setBooks] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+
+    useEffect(() => {
+        async function loadBooks() {
+            const data = await fetchBooks();
+            setBooks(data);
+
+            // Get unique genres and count books per genre
+            const genreCounts: Record<string, number> = {};
+            data.forEach((book) => {
+                genreCounts[book.genre] = (genreCounts[book.genre] || 0) + 1;
+            });
+
+            // Icon mapping with smart matching for genre names
+            const getIconForGenre = (genre: string): any => {
+                const lowerGenre = genre.toLowerCase();
+                
+                if (lowerGenre.includes('fiction') && !lowerGenre.includes('science')) return BookOpen;
+                if (lowerGenre.includes('fantasy') || lowerGenre.includes('magic')) return Sparkles;
+                if (lowerGenre.includes('romance') || lowerGenre.includes('love')) return Heart;
+                if (lowerGenre.includes('mystery') || lowerGenre.includes('thriller')) return Compass;
+                if (lowerGenre.includes('science') || lowerGenre.includes('technology')) return Sparkles;
+                if (lowerGenre.includes('biography') || lowerGenre.includes('memoir')) return User;
+                if (lowerGenre.includes('history') || lowerGenre.includes('historical')) return BookMarked;
+                if (lowerGenre.includes('philosophy')) return Lightbulb;
+                if (lowerGenre.includes('business') || lowerGenre.includes('economics')) return Briefcase;
+                if (lowerGenre.includes('education') || lowerGenre.includes('reference')) return GraduationCap;
+                if (lowerGenre.includes('music') || lowerGenre.includes('arts')) return Music;
+                if (lowerGenre.includes('travel') || lowerGenre.includes('adventure')) return Plane;
+                if (lowerGenre.includes('cooking') || lowerGenre.includes('food')) return Utensils;
+                if (lowerGenre.includes('art') || lowerGenre.includes('design')) return Palette;
+                if (lowerGenre.includes('law') || lowerGenre.includes('politics')) return Scale;
+                if (lowerGenre.includes('health') || lowerGenre.includes('wellness')) return Activity;
+                if (lowerGenre.includes('dystopian') || lowerGenre.includes('apocalyptic')) return BookMarked;
+                if (lowerGenre.includes('horror') || lowerGenre.includes('terror')) return Compass;
+                if (lowerGenre.includes('psychological')) return Lightbulb;
+                
+                return BookOpen; // Default icon
+            };
+
+            // Color mapping with smart matching
+            const getColorForGenre = (genre: string): string => {
+                const lowerGenre = genre.toLowerCase();
+                
+                if (lowerGenre.includes('fiction') && !lowerGenre.includes('science')) return "bg-blue-100 text-blue-600 border-blue-200";
+                if (lowerGenre.includes('fantasy') || lowerGenre.includes('magic')) return "bg-indigo-100 text-indigo-600 border-indigo-200";
+                if (lowerGenre.includes('romance') || lowerGenre.includes('love')) return "bg-pink-100 text-pink-600 border-pink-200";
+                if (lowerGenre.includes('mystery') || lowerGenre.includes('thriller')) return "bg-purple-100 text-purple-600 border-purple-200";
+                if (lowerGenre.includes('science') || lowerGenre.includes('technology')) return "bg-green-100 text-green-600 border-green-200";
+                if (lowerGenre.includes('biography') || lowerGenre.includes('memoir')) return "bg-yellow-100 text-yellow-600 border-yellow-200";
+                if (lowerGenre.includes('history') || lowerGenre.includes('historical')) return "bg-red-100 text-red-600 border-red-200";
+                if (lowerGenre.includes('philosophy')) return "bg-cyan-100 text-cyan-600 border-cyan-200";
+                if (lowerGenre.includes('business') || lowerGenre.includes('economics')) return "bg-teal-100 text-teal-600 border-teal-200";
+                if (lowerGenre.includes('education') || lowerGenre.includes('reference')) return "bg-lime-100 text-lime-600 border-lime-200";
+                if (lowerGenre.includes('music') || lowerGenre.includes('arts')) return "bg-fuchsia-100 text-fuchsia-600 border-fuchsia-200";
+                if (lowerGenre.includes('travel') || lowerGenre.includes('adventure')) return "bg-sky-100 text-sky-600 border-sky-200";
+                if (lowerGenre.includes('cooking') || lowerGenre.includes('food')) return "bg-amber-100 text-amber-600 border-amber-200";
+                if (lowerGenre.includes('art') || lowerGenre.includes('design')) return "bg-rose-100 text-rose-600 border-rose-200";
+                if (lowerGenre.includes('law') || lowerGenre.includes('politics')) return "bg-slate-100 text-slate-600 border-slate-200";
+                if (lowerGenre.includes('health') || lowerGenre.includes('wellness')) return "bg-emerald-100 text-emerald-600 border-emerald-200";
+                if (lowerGenre.includes('dystopian') || lowerGenre.includes('apocalyptic')) return "bg-gray-100 text-gray-600 border-gray-200";
+                if (lowerGenre.includes('horror') || lowerGenre.includes('terror')) return "bg-red-100 text-red-600 border-red-200";
+                if (lowerGenre.includes('psychological')) return "bg-purple-100 text-purple-600 border-purple-200";
+                
+                return "bg-blue-100 text-blue-600 border-blue-200"; // Default color
+            };
+
+            const categoryList = Object.entries(genreCounts).map(([genre, count]) => ({
+                name: genre,
+                icon: getIconForGenre(genre),
+                color: getColorForGenre(genre),
+                count: `${count} book${count !== 1 ? "s" : ""}`,
+                description: `Discover ${genre.toLowerCase()} books`,
+            }));
+
+            setCategories(categoryList);
+        }
+        loadBooks();
+    }, []);
 
     return (
         <div className="min-h-screen bg-white">
@@ -176,7 +130,9 @@ export function CategoriesPage({ onNavigate, onLogout }: CategoriesPageProps) {
                             return (
                                 <button
                                     key={index}
-                                    onClick={() => onNavigate("browse")}
+                                    onClick={() => {
+                                        window.location.href = `/browse?category=${encodeURIComponent(category.name)}`;
+                                    }}
                                     className={`${category.color} border p-6 rounded-xl hover:shadow-md transition-shadow text-left group`}
                                 >
                                     <div className="flex items-center justify-between mb-4">
@@ -204,7 +160,9 @@ export function CategoriesPage({ onNavigate, onLogout }: CategoriesPageProps) {
                             return (
                                 <button
                                     key={index}
-                                    onClick={() => onNavigate("browse")}
+                                    onClick={() => {
+                                        window.location.href = `/browse?category=${encodeURIComponent(category.name)}`;
+                                    }}
                                     className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow text-left group"
                                 >
                                     <div className="flex items-center gap-4">

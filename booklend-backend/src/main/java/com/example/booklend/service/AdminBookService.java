@@ -3,6 +3,8 @@ package com.example.booklend.service;
 import com.example.booklend.dto.BookCreateDto;
 import com.example.booklend.model.Book;
 import com.example.booklend.repository.BookRepository;
+import com.example.booklend.repository.RentalRepository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,9 @@ import java.util.Optional;
 public class AdminBookService {
 	@Autowired
 	private BookRepository bookRepository;
+
+	@Autowired
+	private RentalRepository rentalRepository;
 
 	@Autowired
 	private FileStorageService fileStorageService;
@@ -56,8 +61,10 @@ public class AdminBookService {
 		return ResponseEntity.ok(saved);
 	}
 
+	@Transactional
 	public ResponseEntity<?> delete(Long id) {
 		if (!bookRepository.existsById(id)) return ResponseEntity.notFound().build();
+		rentalRepository.deleteByBookId(id);
 		bookRepository.deleteById(id);
 		return ResponseEntity.ok().build();
 	}

@@ -16,12 +16,6 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-
-/**
- * Integration tests for BookController
- * Tests the full Spring context with actual database interactions
- */
 @SpringBootTest
 class BookControllerIntegrationTest {
 

@@ -1,6 +1,8 @@
 package com.example.booklend.security;
 
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,6 +20,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
@@ -40,9 +43,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(auth);
+                        logger.info("JWT accepted for user='{}', authorities={}", username, userDetails.getAuthorities());
+                    } else {
+                        logger.warn("JWT validation failed for subject='{}'", username);
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                logger.error("Error processing JWT: {}", e.getMessage());
+            }
         }
         filterChain.doFilter(request, response);
     }

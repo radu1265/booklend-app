@@ -22,6 +22,7 @@ import java.util.Optional;
 
 @Service
 public class RentalService {
+    private static final int MAX_ACTIVE_RENTALS_PER_USER = 3;
     @Autowired
     private RentalRepository rentalRepository;
     @Autowired
@@ -49,7 +50,21 @@ public class RentalService {
         if (bookOpt.isEmpty()) return ResponseEntity.notFound().build();
         Book book = bookOpt.get();
 
-        if (book.getStockCount() <= 0) return ResponseEntity.badRequest().body("Book is out of stock");
+        // Prevent duplicate active rentals for the same user and book
+        if (rentalRepository.existsByUserIdAndBookIdAndReturnedFalse(user.getId(), bookId)) {
+            return ResponseEntity.badRequest().body("You already borrowed this book. Please return it before borrowing again.");
+        }
+
+        // Enforce maximum active rentals per user
+        long activeRentals = rentalRepository.countByUserIdAndReturnedFalse(user.getId());
+        if (activeRentals >= MAX_ACTIVE_RENTALS_PER_USER) {
+            return ResponseEntity.badRequest().body(String.format("You have reached the limit of %d active rentals.", MAX_ACTIVE_RENTALS_PER_USER));
+        }
+
+        if (book.getStockCount() <= 0) {
+            long borrowedCount = rentalRepository.countByBookIdAndReturnedFalse(bookId);
+            return ResponseEntity.badRequest().body(String.format("Book is out of stock. Currently borrowed by %d readers.", borrowedCount));
+        }
 
         LocalDate due;
         try {

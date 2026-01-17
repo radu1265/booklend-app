@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Navbar } from "./Navbar";
-import { BookOpen, Heart, Trash2, Download, Loader2 } from "lucide-react";
-import { fetchBooks, fetchRentals, getBookImageUrl, Book, Rental } from "../api";
+import { BookOpen, Heart, Download, Loader2 } from "lucide-react";
+import { fetchBooks, fetchRentals, getBookImageUrl, Book, returnBook } from "../api";
 
 interface MyLibraryPageProps {
     onNavigate: (page: string) => void;
@@ -35,7 +35,7 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                 return {
                     ...book,
                     ...rental,
-                    progress: rental.returned ? 100 : 50,
+                    progress: rental.returned ? 100 : 0,
                     status: rental.returned ? "Completed" : "Reading"
                 };
             });
@@ -62,18 +62,34 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
         };
     }, []);
 
-    const handleRemoveBook = (bookId: number, bookTitle: string) => {
-        if (confirm(`Remove "${bookTitle}" from your library?`)) {
-            setLibraryBooks(libraryBooks.filter(book => book.id !== bookId));
-        }
+    const handleUpdateProgress = (bookId: number, newStatus: string, newProgress: number) => {
+        setLibraryBooks(libraryBooks.map(book => {
+            if (book.id === bookId) {
+                // If progress hits 100, set status to Completed
+                if (newProgress >= 100) {
+                    return { ...book, status: "Completed", progress: 100, returned: true };
+                }
+                // Otherwise, update as normal
+                return { ...book, status: newStatus, progress: newProgress };
+            }
+            return book;
+        }));
     };
 
-    const handleUpdateProgress = (bookId: number, newStatus: string, newProgress: number) => {
-        setLibraryBooks(libraryBooks.map(book => 
-            book.id === bookId 
-                ? { ...book, status: newStatus, progress: newProgress }
-                : book
-        ));
+    const handleReturnBook = async (rentalId: number, bookId: number, bookTitle: string) => {
+        if (confirm(`Mark "${bookTitle}" as returned?`)) {
+            const result = await returnBook(rentalId);
+            if (result.success) {
+                setLibraryBooks(libraryBooks.map(book =>
+                    book.id === bookId
+                        ? { ...book, returned: true, status: "Completed", progress: 100, stockCount: (book.stockCount || 0) + 1 }
+                        : book
+                ));
+                alert("Book returned successfully!");
+            } else {
+                alert(result.message || "Failed to return book");
+            }
+        }
     };
 
     // Filter books based on active tab
@@ -92,9 +108,9 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
         return libraryBooks;
     })();
 
-    // Dynamic stats based on library
+    // Update readingStats to always count books with progress 100 or status Completed
     const readingStats = [
-        { label: "Books Read", value: libraryBooks.filter(b => b.status === "Completed").length, icon: BookOpen, color: "bg-blue-100 text-blue-600" },
+        { label: "Books Read", value: libraryBooks.filter(b => b.status === "Completed" || b.progress === 100).length, icon: BookOpen, color: "bg-blue-100 text-blue-600" },
         { label: "Currently Reading", value: libraryBooks.filter(b => b.status === "Reading").length, icon: Heart, color: "bg-pink-100 text-pink-600" },
         { label: "Total Books", value: libraryBooks.length + favoriteIds.size, icon: Download, color: "bg-green-100 text-green-600" },
     ];
@@ -271,13 +287,13 @@ export function MyLibraryPage({ onNavigate, onLogout }: MyLibraryPageProps) {
                                             <Heart className={`w-4 h-4 ${favoriteIds.has(book.id) ? 'fill-red-500 text-red-500' : ''}`} />
                                             {favoriteIds.has(book.id) ? 'Unfavorite' : 'Favorite'}
                                         </button>
-                                        {!book.isFavorite && (
+                                        {!book.isFavorite && (!book.returned || book.progress < 100) && (
                                             <button 
-                                                onClick={() => handleRemoveBook(book.id, book.title)}
-                                                className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2"
+                                                onClick={() => handleReturnBook(book.rentalId || book.rentalID || book.rental_id || book.id, book.id, book.title)}
+                                                className="px-4 py-2 border border-green-300 text-green-600 rounded-lg hover:bg-green-50 transition-colors flex items-center gap-2"
                                             >
-                                                <Trash2 className="w-4 h-4" />
-                                                Remove
+                                                <Loader2 className="w-4 h-4" />
+                                                Return
                                             </button>
                                         )}
                                     </div>

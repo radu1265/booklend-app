@@ -23,6 +23,9 @@ public class Book {
     private Integer stockCount;
 	private String imageFilename;
 
+    @Transient
+    private Long borrowedCount;
+
     public Book(String title, String author, String genre, String summary, Integer stockCount, String imageFilename) {
         this.title = title;
         this.author = author;
@@ -30,5 +33,15 @@ public class Book {
         this.summary = summary;
         this.stockCount = stockCount;
 		this.imageFilename = imageFilename;
+    }
+
+    public Book(Long id, String title, String author, String genre, String summary, Integer stockCount, String imageFilename) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.genre = genre;
+        this.summary = summary;
+        this.stockCount = stockCount;
+        this.imageFilename = imageFilename;
     }
 }

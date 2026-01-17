@@ -1,18 +1,3 @@
--- Seed Data Script for Booklend Application
--- This script is reexecutable: it deletes existing data and re-inserts it
---
--- HOW TO EXECUTE THIS SCRIPT:
--- Option 1 (from project root):
---   PGPASSWORD=postgres psql -h localhost -U postgres -d booklend_db -f src/main/resources/insert-books.sql
---
--- Option 2 (from backend directory):
---   cd /path/to/booklend-backend
---   PGPASSWORD=postgres psql -h localhost -U postgres -d booklend_db -f src/main/resources/insert-books.sql
---
--- Option 3 (interactive, will prompt for password):
---   psql -h localhost -U postgres -d booklend_db -f src/main/resources/insert-books.sql
---
--- Note: This script will DELETE all existing books, users (except admin), and rentals before inserting new data!
 
 ALTER TABLE rentals DISABLE TRIGGER ALL;
 

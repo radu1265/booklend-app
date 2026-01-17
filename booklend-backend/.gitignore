@@ -1,6 +1,3 @@
-uploads/*
-
-!uploads/.gitkeep
 
 .idea/
 *.iml

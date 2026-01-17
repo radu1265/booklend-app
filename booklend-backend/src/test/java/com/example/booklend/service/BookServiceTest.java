@@ -18,11 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
-/**
- * Unit tests for BookService
- * Tests business logic in isolation using mocked dependencies
- */
+ 
 @ExtendWith(MockitoExtension.class)
 class BookServiceTest {
 
@@ -58,19 +54,19 @@ class BookServiceTest {
         testBook2.setId(2L);
     }
 
-    // Positive test cases
+    
 
     @Test
     @DisplayName("Should return list of all books when books exist")
     void testListAll_Success() {
-        // Arrange
+        
         List<Book> books = Arrays.asList(testBook1, testBook2);
         when(bookRepository.findAll()).thenReturn(books);
 
-        // Act
+        
         ResponseEntity<?> response = bookService.listAll();
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         @SuppressWarnings("unchecked")
@@ -82,13 +78,13 @@ class BookServiceTest {
     @Test
     @DisplayName("Should return empty list when no books exist")
     void testListAll_EmptyList() {
-        // Arrange
+        
         when(bookRepository.findAll()).thenReturn(Arrays.asList());
 
-        // Act
+        
         ResponseEntity<?> response = bookService.listAll();
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         @SuppressWarnings("unchecked")
@@ -100,14 +96,14 @@ class BookServiceTest {
     @Test
     @DisplayName("Should return book when valid ID is provided")
     void testGetById_Success() {
-        // Arrange
+        
         Long bookId = 1L;
         when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook1));
 
-        // Act
+        
         ResponseEntity<?> response = bookService.getById(bookId);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         Book returnedBook = (Book) response.getBody();
@@ -116,29 +112,29 @@ class BookServiceTest {
         verify(bookRepository, times(1)).findById(bookId);
     }
 
-    // Negative test cases
+    
 
     @Test
     @DisplayName("Should return 404 when book ID does not exist")
     void testGetById_NotFound() {
-        // Arrange
+        
         Long nonExistentId = 999L;
         when(bookRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-        // Act
+        
         ResponseEntity<?> response = bookService.getById(nonExistentId);
 
-        // Assert
+        
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(bookRepository, times(1)).findById(nonExistentId);
     }
 
-    // Boundary value testing
+    
 
     @Test
     @DisplayName("Should handle book with minimum stock count (0)")
     void testGetById_WithZeroStock() {
-        // Arrange
+        
         Book outOfStockBook = new Book(
                 "Out of Stock Book",
                 "Author",
@@ -150,10 +146,10 @@ class BookServiceTest {
         outOfStockBook.setId(3L);
         when(bookRepository.findById(3L)).thenReturn(Optional.of(outOfStockBook));
 
-        // Act
+        
         ResponseEntity<?> response = bookService.getById(3L);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Book returnedBook = (Book) response.getBody();
         assertEquals(0, returnedBook.getStockCount());
@@ -162,13 +158,13 @@ class BookServiceTest {
     @Test
     @DisplayName("Should handle null ID gracefully")
     void testGetById_NullId() {
-        // Arrange
+        
         when(bookRepository.findById(null)).thenReturn(Optional.empty());
 
-        // Act
+        
         ResponseEntity<?> response = bookService.getById(null);
 
-        // Assert
+        
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
 }

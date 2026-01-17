@@ -1,4 +1,63 @@
-const API_BASE_URL = "http://localhost:8080/api";
+export async function createBook(book: Partial<Book>, imageFile?: File): Promise<{ success: boolean; book?: Book; message?: string }> {
+    const formData = new FormData();
+    formData.append("book", new Blob([JSON.stringify(book)], { type: "application/json" }));
+    if (imageFile) formData.append("image", imageFile);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/books`, {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+            },
+            body: formData,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return { success: false, message: data.message || "Failed to create book" };
+        }
+        return { success: true, book: data, message: "Book created" };
+    } catch (error) {
+        return { success: false, message: "Error creating book" };
+    }
+}
+
+export async function updateBook(id: number, book: Partial<Book>): Promise<{ success: boolean; book?: Book; message?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/books/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...authHeaders(),
+            },
+            body: JSON.stringify(book),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return { success: false, message: data.message || "Failed to update book" };
+        }
+        return { success: true, book: data, message: "Book updated" };
+    } catch (error) {
+        return { success: false, message: "Error updating book" };
+    }
+}
+
+export async function deleteBook(id: number): Promise<{ success: boolean; message?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/books/${id}`, {
+            method: "DELETE",
+            headers: {
+                ...authHeaders(),
+            },
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            return { success: false, message: data.message || "Failed to delete book" };
+        }
+        return { success: true, message: "Book deleted" };
+    } catch (error) {
+        return { success: false, message: "Error deleting book" };
+    }
+}
+const API_BASE_URL = "http://localhost:8081/api";
 import { getToken } from "./auth";
 
 export interface Book {
@@ -8,6 +67,7 @@ export interface Book {
     genre: string;
     summary: string;
     stockCount: number;
+    borrowedCount?: number;
     imageFilename: string | null;
 }
 
@@ -34,7 +94,7 @@ export async function fetchBooks(): Promise<Book[]> {
     }
 }
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
     const token = getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -91,6 +151,69 @@ export async function fetchBookById(id: number): Promise<Book | null> {
     } catch (error) {
         console.error("Error fetching book:", error);
         return null;
+    }
+}
+
+export async function borrowBook({ bookId, days, dueDate }: { bookId: number; days?: number; dueDate?: string }): Promise<{ success: boolean; message: string }> {
+    try {
+        const params = new URLSearchParams({ bookId: String(bookId) });
+        if (days && days > 0) params.append("days", String(days));
+        if (dueDate) params.append("dueDate", dueDate);
+
+        const response = await fetch(`${API_BASE_URL}/rentals?${params.toString()}`, {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+            },
+        });
+        
+        const data = await response.json().catch(() => ({}));
+        
+        if (!response.ok) {
+            return {
+                success: false,
+                message: data.message || data || "Failed to borrow book"
+            };
+        }
+        
+        return {
+            success: true,
+            message: data.message || "Book borrowed successfully!"
+        };
+    } catch (error) {
+        console.error("Error borrowing book:", error);
+        return {
+            success: false,
+            message: "An error occurred while borrowing the book"
+        };
+    }
+}
+
+export async function returnBook(rentalId: number): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/rentals/${rentalId}/return`, {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return {
+                success: false,
+                message: data.message || data || "Failed to return book"
+            };
+        }
+        return {
+            success: true,
+            message: data.message || "Book returned successfully!"
+        };
+    } catch (error) {
+        console.error("Error returning book:", error);
+        return {
+            success: false,
+            message: "An error occurred while returning the book"
+        };
     }
 }
 

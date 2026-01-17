@@ -7,11 +7,15 @@ import { MyLibraryPage } from "./components/MyLibraryPage";
 import { CategoriesPage } from "./components/CategoriesPage";
 import { ProfilePage } from "./components/ProfilePage";
 import { navigate, getCurrentPath, subscribe } from "./router";
+
 import { isAuthenticated, logout } from "./auth";
+import { fetchCurrentUser, CurrentUser } from "./api";
+
 
 export default function App() {
     const [currentPath, setCurrentPath] = useState(getCurrentPath());
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
     useEffect(() => {
         const unsubscribe = subscribe((path) => {
@@ -24,7 +28,10 @@ export default function App() {
             if (path === "/" || path === "/login" || path === "/register") {
                 navigate("/home");
             }
+            // Fetch current user info
+            fetchCurrentUser().then(setCurrentUser);
         } else {
+            setCurrentUser(null);
             if (path !== "/login" && path !== "/register") {
                 navigate("/login");
             }
@@ -60,7 +67,7 @@ export default function App() {
     const renderProtectedPage = () => {
         switch (currentPath) {
             case "/browse":
-                return <BrowseBooksPage onNavigate={handleNavigate} onLogout={handleLogout} />;
+                return <BrowseBooksPage onNavigate={handleNavigate} onLogout={handleLogout} isAdmin={currentUser?.role === "ADMIN"} />;
             case "/library":
                 return <MyLibraryPage onNavigate={handleNavigate} onLogout={handleLogout} />;
             case "/categories":

@@ -24,11 +24,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
-/**
- * Unit tests for RentalService
- * Testing rental business logic with equivalence partitioning and boundary analysis
- */
+ 
 @ExtendWith(MockitoExtension.class)
 class RentalServiceTest {
 
@@ -78,21 +74,21 @@ class RentalServiceTest {
         testRental.setReturned(false);
     }
 
-    // Positive test cases
+    
 
     @Test
     @DisplayName("Should successfully reserve book when all conditions are met")
     void testReserveBook_Success() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 14, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof RentalDto);
@@ -103,16 +99,16 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should use default 2-week period when days is null")
     void testReserveBook_WithDefaultDays() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, null, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(rentalRepository, times(1)).save(any(Rental.class));
     }
@@ -120,35 +116,35 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should use provided due date when specified")
     void testReserveBook_WithSpecificDueDate() {
-        // Arrange
+        
         String futureDate = LocalDate.now().plusDays(30).toString();
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, null, futureDate, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(rentalRepository, times(1)).save(any(Rental.class));
     }
 
-    // Negative test cases
+    
 
     @Test
     @DisplayName("Should return 404 when book does not exist")
     void testReserveBook_BookNotFound() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(999L, 14, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(rentalRepository, never()).save(any(Rental.class));
     }
@@ -156,16 +152,16 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should return 400 when book is out of stock")
     void testReserveBook_OutOfStock() {
-        // Arrange
+        
         testBook.setStockCount(0);
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 14, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Book is out of stock", response.getBody());
         verify(rentalRepository, never()).save(any(Rental.class));
@@ -174,15 +170,15 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should return 400 when due date format is invalid")
     void testReserveBook_InvalidDateFormat() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, null, "invalid-date", userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertTrue(response.getBody().toString().contains("Invalid dueDate format"));
         verify(rentalRepository, never()).save(any(Rental.class));
@@ -191,31 +187,31 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should return 401 when user is not authenticated")
     void testReserveBook_Unauthorized() {
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 14, null, null);
 
-        // Assert
+        
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals("Unauthorized", response.getBody());
         verify(rentalRepository, never()).save(any(Rental.class));
     }
 
-    // Boundary value testing
+    
 
     @Test
     @DisplayName("Should handle book with exactly 1 stock item")
     void testReserveBook_LastStockItem() {
-        // Arrange
+        
         testBook.setStockCount(1);
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 14, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(bookRepository, times(1)).save(argThat(book -> book.getStockCount() == 0));
     }
@@ -223,16 +219,16 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should handle minimum rental days (1 day)")
     void testReserveBook_MinimumDays() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 1, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(rentalRepository, times(1)).save(any(Rental.class));
     }
@@ -240,16 +236,16 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should handle zero or negative days by using default period")
     void testReserveBook_ZeroDays() {
-        // Arrange
+        
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         ResponseEntity<?> response = rentalService.reserveBook(1L, 0, null, userDetails);
 
-        // Assert
+        
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(rentalRepository, times(1)).save(any(Rental.class));
     }
@@ -257,17 +253,17 @@ class RentalServiceTest {
     @Test
     @DisplayName("Should decrement stock count correctly")
     void testReserveBook_StockDecrement() {
-        // Arrange
+        
         testBook.setStockCount(10);
         when(userDetails.getUsername()).thenReturn("user@test.com");
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook));
         when(rentalRepository.save(any(Rental.class))).thenReturn(testRental);
 
-        // Act
+        
         rentalService.reserveBook(1L, 14, null, userDetails);
 
-        // Assert
+        
         verify(bookRepository, times(1)).save(argThat(book -> book.getStockCount() == 9));
     }
 }

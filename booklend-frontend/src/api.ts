@@ -57,7 +57,7 @@ export async function deleteBook(id: number): Promise<{ success: boolean; messag
         return { success: false, message: "Error deleting book" };
     }
 }
-const API_BASE_URL = "http://localhost:8081/api";
+const API_BASE_URL = "/api";
 import { getToken } from "./auth";
 
 export interface Book {

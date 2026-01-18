@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin/books")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "http://136.115.204.67:4200")
 public class AdminBookController {
 	@Autowired
 	private AdminBookService adminBookService;

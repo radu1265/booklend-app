@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/rentals")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "http://136.115.204.67:4200")
 public class RentalController {
     @Autowired
     private RentalService rentalService;

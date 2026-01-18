@@ -1,6 +1,6 @@
 // Authentication utility for API calls and token storage
 
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = "/api";
 const TOKEN_KEY = "booklend_token";
 
 export interface LoginCredentials {
